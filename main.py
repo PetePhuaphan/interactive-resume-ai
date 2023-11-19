@@ -1,4 +1,3 @@
-from sentence_transformers import SentenceTransformer
 import pinecone
 import openai
 import streamlit as st
