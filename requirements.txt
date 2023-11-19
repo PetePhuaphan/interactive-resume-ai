@@ -3,3 +3,4 @@ langchain
 sentence_transformers
 pinecone-client
 openai
+tiktoken
