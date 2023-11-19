@@ -12,6 +12,7 @@ from langchain.prompts import (
 )
 from langchain.prompts.prompt import PromptTemplate
 from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores import Pinecone
 
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
@@ -23,10 +24,11 @@ pinecone.init(
     environment=PINECONE_ENV  # next to api key in console
 )
 index_name = PINECONE_INDEX
-index = pinecone.Index(index_name)
+
 
 #model = SentenceTransformer('all-MiniLM-L6-v2')
 model = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+index = Pinecone.from_existing_index(index_name, model)
 
 llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=OPENAI_API_KEY)
 
@@ -50,9 +52,8 @@ memory = ConversationBufferWindowMemory(k=3,return_messages=True)
 conversation = ConversationChain(memory=memory, prompt=prompt_template, llm=llm, verbose=True)
 
 def find_match(input):
-    input_em = model.embed_query(input)
-    result = index.query(input_em, top_k=2, includeMetadata=True)
-    return result['matches'][0]['metadata']['text']+"\n"+result['matches'][1]['metadata']['text']
+    result = index.similarity_search(input, k=2)
+    return result[0].page_content+"\n"+result[1].page_content
 
 # Function to add entries to the conversation
 def add_to_conversation(entry):
