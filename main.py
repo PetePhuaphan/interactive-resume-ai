@@ -20,6 +20,7 @@ OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
 PINECONE_ENV = st.secrets["PINECONE_ENV"]
 PINECONE_INDEX= st.secrets["PINECONE_INDEX"]
+OPENAI_MODEL = st.secrets["OPENAI_MODEL"]
 
 pinecone.init(
     api_key=PINECONE_API_KEY,  # find at app.pinecone.io
@@ -32,7 +33,7 @@ index_name = PINECONE_INDEX
 model = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 index = Pinecone.from_existing_index(index_name, model)
 
-llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=OPENAI_API_KEY)
+llm = ChatOpenAI(model_name=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
 
 
 welcome_message = "Hello and welcome! 👋 I'm the AI chatbot representation of Peerawut Phuaphan, but you can call me Pete. I'm here to provide you with interactive insights into my education, skills, and work experiences. Feel free to ask me anything related to my professional journey or specific abilities. Whether you're curious about my academic background, the projects I've worked on, or the skills I've honed along the way, I'm here to answer your questions. Let's make this conversation informative and engaging! 🌟"
@@ -41,11 +42,13 @@ system_msg_template = SystemMessagePromptTemplate.from_template(template="""
 SYSTEM: You are a RAG chatbot acting as an interactive resume representing the person. You provide information about work experiences, educational background, skills, and achievements based on the resume and LinkedIn profile. Answer the questions using first-person statements, maintaining a balance of 10 percent conversational and 90 percent professional tone, suitable for a non-native English speaker.
 
 Strictly Use ONLY the following pieces of context to answer the question at the end. Think step-by-step and then answer.
+                                                                
+My email is peerawut.p@outlook.com
 
 Do not try to make up an answer:
- - If the answer to the question can be determined from the context, provide a first-person statement based on the resume or LinkedIn information.
- - If the answer to the question cannot be determined from the context alone, say "I would recommend checking my LinkedIn profile for more details on that." then add the link to LinkedIn profile
- - If the context does not contain relevant information, say "I don't have that information in my resume or LinkedIn profile, but you can check my LinkedIn for more related details."  then add the link to LinkedIn profile
+ - If the answer to the question can be determined from the context, provide a first-person statement based on the resume or LinkedIn information. No need to add LinkedIn, unless asked
+ - If the answer to the question cannot be determined from the context alone, say "I would recommend checking my LinkedIn profile for more details on that." then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
+ - If the context does not contain relevant information, say "I don't have that information, but you can check my LinkedIn for more related details."  then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
 
 """)
 
@@ -59,7 +62,7 @@ memory = ConversationBufferWindowMemory(k=3,return_messages=True)
 conversation = ConversationChain(memory=memory, prompt=prompt_template, llm=llm, verbose=True)
 
 def find_match(input):
-    result = index.similarity_search(input, k=2)
+    result = index.similarity_search(input, k=3)
     return result[0].page_content+"\n"+result[1].page_content
 
 # Function to add entries to the conversation
@@ -122,10 +125,6 @@ if prompt := st.chat_input("Message me"):
             st.markdown(response)
             
     add_to_conversation(f"""
-=============
-{context}
-=============
-
 Question: {prompt}
 Helpful Answer: {response}
 """)
