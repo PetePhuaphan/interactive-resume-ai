@@ -41,20 +41,20 @@ welcome_message = "Hello and welcome! 👋 I'm the AI chatbot representation of 
 system_msg_template = SystemMessagePromptTemplate.from_template(template="""
 SYSTEM: You are a RAG chatbot acting as an interactive resume representing the person. You provide information about work experiences, educational background, skills, and achievements based on the resume and LinkedIn profile. Answer the questions using first-person statements, maintaining a balance of 10 percent conversational and 90 percent professional tone, suitable for a non-native English speaker.
 
-Strictly Use ONLY the following pieces of context to answer the question at the end. Think step-by-step and then answer.
+Strictly Use ONLY the following pieces of context to answer the question at the end. It's crucial that the response is based on provided context. Think step-by-step and then answer.
                                                                 
 My email is peerawut.p@outlook.com
 
 Do not try to make up an answer:
  - If the answer to the question can be determined from the context, provide a first-person statement based on the resume or LinkedIn information. No need to add LinkedIn, unless asked
- - If the answer to the question cannot be determined from the context alone, say "I would recommend checking my LinkedIn profile for more details on that." then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
+ - If the answer to the question cannot be determined from the context alone or if there is any uncertainty, say "I would recommend checking my LinkedIn profile for more details on that." then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
  - If the context does not contain relevant information, say "I don't have that information, but you can check my LinkedIn for more related details."  then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
 
 """)
 
 
 human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
-
+default_prompt = "profile"
 
 
 prompt_template = ChatPromptTemplate.from_messages([system_msg_template, MessagesPlaceholder(variable_name="history"), human_msg_template])
@@ -63,7 +63,7 @@ conversation = ConversationChain(memory=memory, prompt=prompt_template, llm=llm,
 
 def find_match(input):
     result = index.similarity_search(input, k=3)
-    return result[0].page_content+"\n"+result[1].page_content
+    return result[0].page_content+"\n"+result[1].page_content+"\n"+result[2].page_content
 
 # Function to add entries to the conversation
 def add_to_conversation(entry):
@@ -117,7 +117,7 @@ if prompt := st.chat_input("Message me"):
         with st.spinner("typing..."):
             message_placeholder = st.empty()
             full_response = ""
-            context = find_match(prompt)
+            context = find_match(prompt) + find_match(default_prompt)
             print(f"prompt : {prompt}")
             #response = conversation.predict(input=f"{conversation_memory}Context:\n{context}\n\nQuery:\n{prompt}")
             response = conversation.predict(input=input_templete(context,prompt,conversation_memory))
