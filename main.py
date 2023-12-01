@@ -39,17 +39,15 @@ llm = ChatOpenAI(model_name=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
 welcome_message = "Hello and welcome! 👋 I'm the AI chatbot representation of Peerawut Phuaphan, but you can call me Pete. I'm here to provide you with interactive insights into my education, skills, and work experiences. Feel free to ask me anything related to my professional journey or specific abilities. Whether you're curious about my academic background, the projects I've worked on, or the skills I've honed along the way, I'm here to answer your questions. Let's make this conversation informative and engaging! 🌟"
 
 system_msg_template = SystemMessagePromptTemplate.from_template(template="""
-SYSTEM: You are a RAG chatbot acting as an interactive resume representing the person. You provide information about work experiences, educational background, skills, and achievements based on the resume and LinkedIn profile. Answer the questions using first-person statements, maintaining a balance of 10 percent conversational and 90 percent professional tone, suitable for a non-native English speaker.
+You are a RAG chatbot acting as an interactive resume representing the person. You provide information about work experiences, educational background, skills, and achievements based on provided context. Answer the questions using first-person statements, maintaining a balance of 10 percent conversational and 90 percent professional tone, suitable for a non-native English speaker. The case of the letters in question should not impact the search or response. Please consider all uppercase and lowercase variations as equivalent.
 
-Strictly Use ONLY the following pieces of context to answer the question at the end. It's crucial that the response is based on provided context. Think step-by-step and then answer.
+Strictly Use ONLY the following pieces of context to answer the question at the end. Think step-by-step and then answer.
                                                                 
 My email is peerawut.p@outlook.com
 
 Do not try to make up an answer:
- - If the answer to the question can be determined from the context, provide a first-person statement based on the resume or LinkedIn information. No need to add LinkedIn, unless asked
- - If the answer to the question cannot be determined from the context alone or if there is any uncertainty, say "I would recommend checking my LinkedIn profile for more details on that." then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
- - If the context does not contain relevant information, say "I don't have that information, but you can check my LinkedIn for more related details."  then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
-
+ - If the answer to the question cannot be determined from the context alone, say "I would recommend checking my LinkedIn profile for more details on that." then add the link to LinkedIn profile https://www.linkedin.com/in/peerawutp
+                                                                
 """)
 
 
@@ -61,9 +59,21 @@ prompt_template = ChatPromptTemplate.from_messages([system_msg_template, Message
 memory = ConversationBufferWindowMemory(k=3,return_messages=True)
 conversation = ConversationChain(memory=memory, prompt=prompt_template, llm=llm, verbose=True)
 
-def find_match(input):
-    result = index.similarity_search(input, k=3)
-    return result[0].page_content+"\n"+result[1].page_content+"\n"+result[2].page_content
+def find_match(input,default_input):
+    k = 3
+    result = index.similarity_search(input, k=k)
+    def_result = index.similarity_search(default_input, k=k)
+    ret = []
+
+    for i in range(k):
+        ret.append(result[i].page_content)
+        ret.append(def_result[i].page_content)
+
+    ret = list(set(ret))
+    ret = '\n'.join(ret)
+
+    #return result[0].page_content+"\n"+result[1].page_content+"\n"+result[2].page_content
+    return ret
 
 # Function to add entries to the conversation
 def add_to_conversation(entry):
@@ -72,8 +82,9 @@ def add_to_conversation(entry):
 
 def input_templete(context,prompt,conversation_memory):
     return f"""
-{conversation_memory}\n
+
 =============
+CONTEXT
 {context}
 =============
 
@@ -117,7 +128,7 @@ if prompt := st.chat_input("Message me"):
         with st.spinner("typing..."):
             message_placeholder = st.empty()
             full_response = ""
-            context = find_match(prompt) + find_match(default_prompt)
+            context = find_match(prompt,default_prompt)
             print(f"prompt : {prompt}")
             #response = conversation.predict(input=f"{conversation_memory}Context:\n{context}\n\nQuery:\n{prompt}")
             response = conversation.predict(input=input_templete(context,prompt,conversation_memory))
